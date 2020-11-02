@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <map>
 
 #ifdef libtext_EXPORTS
 #define libtext_API __declspec(dllexport)
@@ -27,6 +28,9 @@ public:
   const std::wstring& wide_string() const;
   const std::string& byte_string() const;
   const std::u32string& unicode_string() const;
+
+  //extended getters
+  const std::string& byte_string(const std::string& encoding) const;
 
   //operator overloads
   text* operator -> ();
@@ -68,6 +72,9 @@ private:
   mutable std::string cached_byte_string;
   mutable std::wstring cached_wide_string;
   mutable std::u32string cached_unicode_string;
+
+  //extended cached strings
+  mutable std::map<std::string, std::string> cached_byte_strings;
 
   //init data
   std::string init_byte_string;

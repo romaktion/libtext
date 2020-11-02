@@ -3,7 +3,6 @@
 #include "constants.h"
 #include <signal.h>
 #include <iostream>
-#include "string.h"
 
 
 text::text()
@@ -23,13 +22,11 @@ text::text(const wchar_t* wide_string)
 
 void text::assign(const char* byte_string, const std::string& encoding)
 {
+  init_byte_encoding = encoding;
+  init_byte_string.assign(byte_string);
+
   if (encoding == "UTF-8")
     cached_byte_string.assign(byte_string);
-  else
-  {
-    init_byte_encoding = encoding;
-    init_byte_string.assign(byte_string);
-  }
 }
 
 void text::assign(const wchar_t* wide_string)
@@ -40,12 +37,8 @@ void text::assign(const wchar_t* wide_string)
 const std::wstring& text::wide_string() const
 {
   if (cached_wide_string.empty())
-  {
-    if (!cached_byte_string.empty())
-      _iconv(cached_byte_string.c_str(), "UTF-8", cached_wide_string, WCHAR_T_PLATFORM_ENCODING);
-    else if (!init_byte_string.empty())
+    if (!init_byte_string.empty())
       _iconv(init_byte_string, init_byte_encoding.c_str(), cached_wide_string, WCHAR_T_PLATFORM_ENCODING);
-  }
 
   return cached_wide_string;
 }
@@ -63,16 +56,34 @@ const std::string& text::byte_string() const
   return cached_byte_string;
 }
 
+const std::string& text::byte_string(const std::string& encoding) const
+{
+  auto found = cached_byte_strings.find(encoding);
+  if (found != cached_byte_strings.end())
+    return found->second;
+  else
+    if (!init_byte_string.empty())
+    {
+      std::string new_string;
+      _iconv(init_byte_string, init_byte_encoding.c_str(), new_string, encoding.c_str());
+
+      return cached_byte_strings.insert(std::pair<std::string, std::string>(encoding, std::move(new_string))).first->second;
+    }
+
+  static std::string ret;
+  return ret;
+}
+
 const std::u32string& text::unicode_string() const
 {
   if (cached_unicode_string.empty())
   {
     switch (sizeof(wchar_t))
     {
-    case 1://TODO: optimiztionб select an existing string as source for convertation
+    case 1://TODO: optimization select an existing string as source for converting
       convert_utf16_to_utf32(wide_string(), cached_unicode_string);
       break;
-    case 2://TODO: optimiztionб select an existing string as source for convertation
+    case 2://TODO: optimization select an existing string as source for converting
       convert_utf16_to_utf32(wide_string(), cached_unicode_string);
       break;
     case 4:
@@ -105,6 +116,8 @@ text* text::text::operator->()
   init_byte_encoding.clear();
   init_byte_string.clear();
   
+  cached_byte_strings.clear();
+
   return this;
 }
 
